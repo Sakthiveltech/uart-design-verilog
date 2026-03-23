@@ -25,7 +25,7 @@ A fully functional **Universal Asynchronous Receiver Transmitter (UART)** design
 
 ## Architecture
 
-![UART Architecture]UART_project/architecture/architectute_uart.png
+https://github.com/Sakthiveltech/uart-design-verilog/blob/main/UART_project/architecture/architecture_uart.png
 
 ---
 
