@@ -1,0 +1,101 @@
+// ============================================================
+//  UART Receiver (RX) with 16x Oversampling
+//  Frame : 1 Start | 8 Data (LSB first) | 1 Even Parity | 1 Stop
+//  Samples at center of each bit (every 16 ticks)
+//  Start bit verified at tick 8 (center) to reject glitches
+// ============================================================
+module uart_rx (
+    input  wire       clk,
+    input  wire       rst,
+    input  wire       baud_tick,
+    input  wire       rx,
+    output reg  [7:0] rx_data,
+    output reg        rx_done,
+    output reg        parity_error
+);
+    localparam IDLE   = 3'd0;
+    localparam START  = 3'd1;
+    localparam DATA   = 3'd2;
+    localparam PARITY = 3'd3;
+    localparam STOP   = 3'd4;
+
+    reg [2:0] state;
+    reg [3:0] tick_count;
+    reg [2:0] bit_index;
+    reg [7:0] rx_shift;
+    reg       rx_parity;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state        <= IDLE;
+            rx_data      <= 8'd0;
+            rx_done      <= 1'b0;
+            parity_error <= 1'b0;
+            tick_count   <= 0;
+            bit_index    <= 0;
+            rx_shift     <= 0;
+            rx_parity    <= 0;
+        end else begin
+            rx_done <= 1'b0;
+            case (state)
+                IDLE: begin
+                    parity_error <= 1'b0;
+                    tick_count   <= 0;
+                    if (!rx)
+                        state <= START;
+                end
+                START: begin
+                    if (baud_tick) begin
+                        if (tick_count == 7) begin
+                            tick_count <= 0;
+                            if (!rx) begin
+                                bit_index <= 0;
+                                state     <= DATA;
+                            end else
+                                state <= IDLE;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                DATA: begin
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count          <= 0;
+                            rx_shift[bit_index] <= rx;
+                            if (bit_index == 7)
+                                state <= PARITY;
+                            else
+                                bit_index <= bit_index + 1;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                PARITY: begin
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            rx_parity  <= rx;
+                            state      <= STOP;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                STOP: begin
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            if (rx) begin
+                                rx_data      <= rx_shift;
+                                rx_done      <= 1'b1;
+                                parity_error <= (^rx_shift) ^ rx_parity;
+                            end
+                            state <= IDLE;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                default: state <= IDLE;
+            endcase
+        end
+    end
+endmodule

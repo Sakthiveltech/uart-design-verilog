@@ -1,0 +1,44 @@
+// ============================================================
+//  UART Top Level
+//  Instantiates: baud_rate_gen + uart_tx + uart_rx
+// ============================================================
+module uart_top #(parameter DIVISOR = 325) (
+    input  wire       clk,
+    input  wire       rst,
+    input  wire       tx_start,
+    input  wire [7:0] tx_data,
+    output wire       tx,
+    output wire       tx_busy,
+    input  wire       rx,
+    output wire [7:0] rx_data,
+    output wire       rx_done,
+    output wire       parity_error
+);
+    wire baud_tick;
+
+    baud_rate_gen #(.DIVISOR(DIVISOR)) u_baud (
+        .clk       (clk),
+        .rst       (rst),
+        .baud_tick (baud_tick)
+    );
+
+    uart_tx u_tx (
+        .clk       (clk),
+        .rst       (rst),
+        .baud_tick (baud_tick),
+        .tx_start  (tx_start),
+        .tx_data   (tx_data),
+        .tx        (tx),
+        .tx_busy   (tx_busy)
+    );
+
+    uart_rx u_rx (
+        .clk          (clk),
+        .rst          (rst),
+        .baud_tick    (baud_tick),
+        .rx           (rx),
+        .rx_data      (rx_data),
+        .rx_done      (rx_done),
+        .parity_error (parity_error)
+    );
+endmodule

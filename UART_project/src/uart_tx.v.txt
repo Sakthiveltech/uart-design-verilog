@@ -1,0 +1,96 @@
+// ============================================================
+//  UART Transmitter (TX)
+//  Frame : 1 Start | 8 Data (LSB first) | 1 Even Parity | 1 Stop
+//  16 baud ticks per bit
+// ============================================================
+module uart_tx (
+    input  wire       clk,
+    input  wire       rst,
+    input  wire       baud_tick,
+    input  wire       tx_start,
+    input  wire [7:0] tx_data,
+    output reg        tx,
+    output reg        tx_busy
+);
+    localparam IDLE   = 3'd0;
+    localparam START  = 3'd1;
+    localparam DATA   = 3'd2;
+    localparam PARITY = 3'd3;
+    localparam STOP   = 3'd4;
+
+    reg [2:0] state;
+    reg [3:0] tick_count;
+    reg [2:0] bit_index;
+    reg [7:0] tx_shift;
+    reg       parity_bit;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state      <= IDLE;
+            tx         <= 1'b1;
+            tx_busy    <= 1'b0;
+            tick_count <= 0;
+            bit_index  <= 0;
+            parity_bit <= 0;
+        end else begin
+            case (state)
+                IDLE: begin
+                    tx         <= 1'b1;
+                    tx_busy    <= 1'b0;
+                    tick_count <= 0;
+                    if (tx_start) begin
+                        tx_shift   <= tx_data;
+                        parity_bit <= ^tx_data;
+                        tx_busy    <= 1'b1;
+                        state      <= START;
+                    end
+                end
+                START: begin
+                    tx <= 1'b0;
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            bit_index  <= 0;
+                            state      <= DATA;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                DATA: begin
+                    tx <= tx_shift[bit_index];
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            if (bit_index == 7)
+                                state <= PARITY;
+                            else
+                                bit_index <= bit_index + 1;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                PARITY: begin
+                    tx <= parity_bit;
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            state      <= STOP;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                STOP: begin
+                    tx <= 1'b1;
+                    if (baud_tick) begin
+                        if (tick_count == 15) begin
+                            tick_count <= 0;
+                            state      <= IDLE;
+                        end else
+                            tick_count <= tick_count + 1;
+                    end
+                end
+                default: state <= IDLE;
+            endcase
+        end
+    end
+endmodule
