@@ -66,6 +66,16 @@ https://github.com/Sakthiveltech/uart-design-verilog/blob/main/UART_project/arch
 
 
 ---
+### Simulation Commands
+```bash
+# Compile the UART design and testbench
+iverilog -o uart_sim uart_tb.v uart_top.v uart_tx.v uart_rx.v baud_rate_gen.v
+
+# Run simulation and generate VCD file
+vvp uart_sim
+
+# View waveform using GTKWave
+gtkwave uart_dump.vcd
 
 
 
