@@ -25,7 +25,7 @@ A fully functional **Universal Asynchronous Receiver Transmitter (UART)** design
 
 ## Architecture
 
-![UART Architecture](waveform/uart_architecture.png)
+![UART Architecture]UART_project/architecture/architectute_uart.png
 
 ---
 
